@@ -312,7 +312,7 @@ concierge-scheduler/
 ---
 
 ## 🧑‍💻 Author
-**Vlad Production**  
+**vbforge**  
 _Java Developer | Spring Boot | Software Architecture_
 
 📫 **Contact:** [GitHub](https://github.com/vbforge) • [LinkedIn](https://linkedin.com/in/vlad-bogdantsev-7897662b2)
