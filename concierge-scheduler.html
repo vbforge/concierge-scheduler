@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concierge Shift Scheduler - Preview</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --color-alice: #3498db;
+            --color-bob: #9b59b6;
+            --color-carol: #2ecc71;
+        }
+
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .calendar-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+        }
+
+        .weekday-header {
+            text-align: center;
+            font-weight: 600;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            color: #495057;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            background-color: white;
+        }
+
+        .calendar-day:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .calendar-day.assigned {
+            border-width: 3px;
+        }
+
+        .calendar-day.alice {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-color: var(--color-alice);
+        }
+
+        .calendar-day.bob {
+            background-color: rgba(155, 89, 182, 0.1);
+            border-color: var(--color-bob);
+        }
+
+        .calendar-day.carol {
+            background-color: rgba(46, 204, 113, 0.1);
+            border-color: var(--color-carol);
+        }
+
+        .day-number {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .day-name {
+            font-size: 11px;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .concierge-name {
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        .empty-day {
+            background-color: #f8f9fa;
+            opacity: 0.6;
+            cursor: default;
+        }
+
+        .today {
+            box-shadow: 0 0 0 2px #ffc107;
+        }
+
+        .weekend {
+            background-color: #fff8f0;
+        }
+
+        .page-selector {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .modal-backdrop.show {
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+<!-- Navigation -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#"><i class="fas fa-calendar-alt"></i> Concierge Scheduler</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#" onclick="showPage('schedule')">Schedule</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="showPage('concierges')">Concierges</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="showPage('history')">History</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="showPage('statistics')">Statistics</a>
+                </li>
+            </ul>
+            <ul class="navbar-nav">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user-circle"></i> Admin
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid" style="max-width: 1400px;">
+
+    <!-- SCHEDULE PAGE -->
+    <div id="schedulePage" class="page-content">
+        <div class="calendar-container">
+            <div class="calendar-header">
+                <div>
+                    <h3 class="mb-0">November 2025</h3>
+                    <small class="text-muted">Monthly Shift Schedule</small>
+                </div>
+                <div class="d-flex gap-3 align-items-center">
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: var(--color-alice);"></div>
+                            <span>Alice</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: var(--color-bob);"></div>
+                            <span>Bob</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: var(--color-carol);"></div>
+                            <span>Carol</span>
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-secondary btn-sm"><i class="fas fa-chevron-left"></i></button>
+                        <button class="btn btn-outline-secondary btn-sm">Today</button>
+                        <button class="btn btn-outline-secondary btn-sm"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <button class="btn btn-primary btn-sm"><i class="fas fa-download"></i> Export</button>
+                </div>
+            </div>
+
+            <!-- Calendar Grid -->
+            <div class="calendar-grid">
+                <!-- Weekday Headers -->
+                <div class="weekday-header">MON</div>
+                <div class="weekday-header">TUE</div>
+                <div class="weekday-header">WED</div>
+                <div class="weekday-header">THU</div>
+                <div class="weekday-header">FRI</div>
+                <div class="weekday-header">SAT</div>
+                <div class="weekday-header">SUN</div>
+
+                <!-- Days -->
+                <div class="calendar-day empty-day"></div>
+                <div class="calendar-day empty-day"></div>
+                <div class="calendar-day empty-day"></div>
+                <div class="calendar-day empty-day"></div>
+
+                <div class="calendar-day alice assigned" data-bs-toggle="modal" data-bs-target="#assignModal">
+                    <div class="day-number">1</div>
+                    <div class="day-name">FRI</div>
+                    <div class="concierge-name">Alice</div>
+                </div>
+                <div class="calendar-day weekend bob assigned">
+                    <div class="day-number">2</div>
+                    <div class="day-name">SAT</div>
+                    <div class="concierge-name">Bob</div>
+                </div>
+                <div class="calendar-day weekend carol assigned">
+                    <div class="day-number">3</div>
+                    <div class="day-name">SUN</div>
+                    <div class="concierge-name">Carol</div>
+                </div>
+
+                <div class="calendar-day alice assigned">
+                    <div class="day-number">4</div>
+                    <div class="day-name">MON</div>
+                    <div class="concierge-name">Alice</div>
+                </div>
+                <div class="calendar-day bob assigned">
+                    <div class="day-number">5</div>
+                    <div class="day-name">TUE</div>
+                    <div class="concierge-name">Bob</div>
+                </div>
+                <div class="calendar-day today carol assigned">
+                    <div class="day-number">6</div>
+                    <div class="day-name">WED</div>
+                    <div class="concierge-name">Carol</div>
+                </div>
+                <div class="calendar-day">
+                    <div class="day-number">7</div>
+                    <div class="day-name">THU</div>
+                    <div class="text-center text-muted" style="font-size: 11px; margin-top: 10px;">Click to assign</div>
+                </div>
+                <div class="calendar-day">
+                    <div class="day-number">8</div>
+                    <div class="day-name">FRI</div>
+                </div>
+                <div class="calendar-day weekend">
+                    <div class="day-number">9</div>
+                    <div class="day-name">SAT</div>
+                </div>
+                <div class="calendar-day weekend">
+                    <div class="day-number">10</div>
+                    <div class="day-name">SUN</div>
+                </div>
+
+                <!-- Continue pattern for rest of month -->
+                <div class="calendar-day alice assigned">
+                    <div class="day-number">11</div>
+                    <div class="day-name">MON</div>
+                    <div class="concierge-name">Alice</div>
+                </div>
+                <div class="calendar-day bob assigned">
+                    <div class="day-number">12</div>
+                    <div class="day-name">TUE</div>
+                    <div class="concierge-name">Bob</div>
+                </div>
+                <div class="calendar-day carol assigned">
+                    <div class="day-number">13</div>
+                    <div class="day-name">WED</div>
+                    <div class="concierge-name">Carol</div>
+                </div>
+                <div class="calendar-day alice assigned">
+                    <div class="day-number">14</div>
+                    <div class="day-name">THU</div>
+                    <div class="concierge-name">Alice</div>
+                </div>
+                <div class="calendar-day bob assigned">
+                    <div class="day-number">15</div>
+                    <div class="day-name">FRI</div>
+                    <div class="concierge-name">Bob</div>
+                </div>
+                <div class="calendar-day weekend carol assigned">
+                    <div class="day-number">16</div>
+                    <div class="day-name">SAT</div>
+                    <div class="concierge-name">Carol</div>
+                </div>
+                <div class="calendar-day weekend alice assigned">
+                    <div class="day-number">17</div>
+                    <div class="day-name">SUN</div>
+                    <div class="concierge-name">Alice</div>
+                </div>
+
+                <div class="calendar-day bob assigned">
+                    <div class="day-number">18</div>
+                    <div class="day-name">MON</div>
+                    <div class="concierge-name">Bob</div>
+                </div>
+                <div class="calendar-day carol assigned">
+                    <div class="day-number">19</div>
+                    <div class="day-name">TUE</div>
+                    <div class="concierge-name">Carol</div>
+                </div>
+                <div class="calendar-day alice assigned">
+                    <div class="day-number">20</div>
+                    <div class="day-name">WED</div>
+                    <div class="concierge-name">Alice</div>
+                </div>
+                <div class="calendar-day bob assigned">
+                    <div class="day-number">21</div>
+                    <div class="day-name">THU</div>
+                    <div class="concierge-name">Bob</div>
+                </div>
+                <div class="calendar-day carol assigned">
+                    <div class="day-number">22</div>
+                    <div class="day-name">FRI</div>
+                    <div class="concierge-name">Carol</div>
+                </div>
+                <div class="calendar-day weekend alice assigned">
+                    <div class="day-number">23</div>
+                    <div class="day-name">SAT</div>
+                    <div class="concierge-name">Alice</div>
+                </div>
+                <div class="calendar-day weekend bob assigned">
+                    <div class="day-number">24</div>
+                    <div class="day-name">SUN</div>
+                    <div class="concierge-name">Bob</div>
+                </div>
+
+                <div class="calendar-day carol assigned">
+                    <div class="day-number">25</div>
+                    <div class="day-name">MON</div>
+                    <div class="concierge-name">Carol</div>
+                </div>
+                <div class="calendar-day alice assigned">
+                    <div class="day-number">26</div>
+                    <div class="day-name">TUE</div>
+                    <div class="concierge-name">Alice</div>
+                </div>
+                <div class="calendar-day bob assigned">
+                    <div class="day-number">27</div>
+                    <div class="day-name">WED</div>
+                    <div class="concierge-name">Bob</div>
+                </div>
+                <div class="calendar-day carol assigned">
+                    <div class="day-number">28</div>
+                    <div class="day-name">THU</div>
+                    <div class="concierge-name">Carol</div>
+                </div>
+                <div class="calendar-day alice assigned">
+                    <div class="day-number">29</div>
+                    <div class="day-name">FRI</div>
+                    <div class="concierge-name">Alice</div>
+                </div>
+                <div class="calendar-day weekend bob assigned">
+                    <div class="day-number">30</div>
+                    <div class="day-name">SAT</div>
+                    <div class="concierge-name">Bob</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONCIERGES PAGE -->
+    <div id="conciergesPage" class="page-content" style="display: none;">
+        <div class="calendar-container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="mb-0">Manage Concierges</h3>
+                    <small class="text-muted">Add, edit or remove concierge staff</small>
+                </div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addConciergeModal">
+                    <i class="fas fa-plus"></i> Add Concierge
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Color</th>
+                        <th>Total Shifts (Current Month)</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td><i class="fas fa-user"></i> Alice</td>
+                        <td><span class="badge" style="background-color: var(--color-alice);">BLUE</span></td>
+                        <td>10</td>
+                        <td><span class="badge bg-success">Active</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i> Edit</button>
+                            <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td><i class="fas fa-user"></i> Bob</td>
+                        <td><span class="badge" style="background-color: var(--color-bob);">PURPLE</span></td>
+                        <td>11</td>
+                        <td><span class="badge bg-success">Active</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i> Edit</button>
+                            <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td><i class="fas fa-user"></i> Carol</td>
+                        <td><span class="badge" style="background-color: var(--color-carol);">GREEN</span></td>
+                        <td>9</td>
+                        <td><span class="badge bg-success">Active</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i> Edit</button>
+                            <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- HISTORY PAGE -->
+    <div id="historyPage" class="page-content" style="display: none;">
+        <div class="calendar-container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="mb-0">Schedule History</h3>
+                    <small class="text-muted">View past monthly schedules</small>
+                </div>
+                <button class="btn btn-outline-primary">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title">October 2025</h5>
+                                <span class="badge bg-secondary">Completed</span>
+                            </div>
+                            <p class="card-text text-muted">Total Days: 31</p>
+                            <ul class="list-unstyled">
+                                <li><span style="color: var(--color-alice);">●</span> Alice: 11 shifts</li>
+                                <li><span style="color: var(--color-bob);">●</span> Bob: 10 shifts</li>
+                                <li><span style="color: var(--color-carol);">●</span> Carol: 10 shifts</li>
+                            </ul>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-primary flex-fill"><i class="fas fa-eye"></i> View</button>
+                                <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-download"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title">September 2025</h5>
+                                <span class="badge bg-secondary">Completed</span>
+                            </div>
+                            <p class="card-text text-muted">Total Days: 30</p>
+                            <ul class="list-unstyled">
+                                <li><span style="color: var(--color-alice);">●</span> Alice: 10 shifts</li>
+                                <li><span style="color: var(--color-bob);">●</span> Bob: 10 shifts</li>
+                                <li><span style="color: var(--color-carol);">●</span> Carol: 10 shifts</li>
+                            </ul>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-primary flex-fill"><i class="fas fa-eye"></i> View</button>
+                                <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-download"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title">August 2025</h5>
+                                <span class="badge bg-secondary">Completed</span>
+                            </div>
+                            <p class="card-text text-muted">Total Days: 31</p>
+                            <ul class="list-unstyled">
+                                <li><span style="color: var(--color-alice);">●</span> Alice: 11 shifts</li>
+                                <li><span style="color: var(--color-bob);">●</span> Bob: 10 shifts</li>
+                                <li><span style="color: var(--color-carol);">●</span> Carol: 10 shifts</li>
+                            </ul>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-primary flex-fill"><i class="fas fa-eye"></i> View</button>
+                                <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-download"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATISTICS PAGE -->
+    <div id="statisticsPage" class="page-content" style="display: none;">
+        <div class="calendar-container">
+            <div class="mb-4">
+                <h3 class="mb-0">Statistics & Reports</h3>
+                <small class="text-muted">Work distribution and analytics</small>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card text-center" style="border-left: 4px solid var(--color-alice);">
+                        <div class="card-body">
+                            <h2 class="mb-0">10</h2>
+                            <p class="text-muted mb-0">Alice's Shifts</p>
+                            <small class="text-muted">Current Month</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center" style="border-left: 4px solid var(--color-bob);">
+                        <div class="card-body">
+                            <h2 class="mb-0">11</h2>
+                            <p class="text-muted mb-0">Bob's Shifts</p>
+                            <small class="text-muted">Current Month</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center" style="border-left: 4px solid var(--color-carol);">
+                        <div class="card-body">
+                            <h2 class="mb-0">9</h2>
+                            <p class="text-muted mb-0">Carol's Shifts</p>
+                            <small class="text-muted">Current Month</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Monthly Distribution</h5>
+                    <div style="height: 300px; display: flex; align-items: flex-end; gap: 20px; justify-content: center;">
+                        <div class="text-center">
+                            <div style="width: 80px; height: 200px; background-color: var(--color-alice); border-radius: 8px 8px 0 0;"></div>
+                            <p class="mt-2 mb-0"><strong>Alice</strong></p>
+                            <small class="text-muted">10 shifts</small>
+                        </div>
+                        <div class="text-center">
+                            <div style="width: 80px; height: 220px; background-color: var(--color-bob); border-radius: 8px 8px 0 0;"></div>
+                            <p class="mt-2 mb-0"><strong>Bob</strong></p>
+                            <small class="text-muted">11 shifts</small>
+                        </div>
+                        <div class="text-center">
+                            <div style="width: 80px; height: 180px; background-color: var(--color-carol); border-radius: 8px 8px 0 0;"></div>
+                            <p class="mt-2 mb-0"><strong>Carol</strong></p>
+                            <small class="text-muted">9 shifts</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Shift Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assign Shift</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="text" class="form-control" value="November 1, 2025" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Select Concierge</label>
+                        <select class="form-select">
+                            <option selected>Choose...</option>
+                            <option value="1">Alice</option>
+                            <option value="2">Bob</option>
+                            <option value="3">Carol</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Shift Type</label>
+                        <input type="text" class="form-control" value="24 Hours (Full Day)" readonly>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Remove Assignment</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Save Assignment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Concierge Modal -->
+<div class="modal fade" id="addConciergeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Concierge</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" placeholder="Enter concierge name">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Color</label>
+                        <select class="form-select">
+                            <option selected>Choose color...</option>
+                            <option value="BLUE">Blue</option>
+                            <option value="PURPLE">Purple</option>
+                            <option value="GREEN">Green</option>
+                            <option value="RED">Red</option>
+                            <option value="ORANGE">Orange</option>
+                            <option value="YELLOW">Yellow</option>
+                            <option value="PINK">Pink</option>
+                            <option value="TEAL">Teal</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Preview</label>
+                        <div class="p-3 border rounded" style="background-color: rgba(52, 152, 219, 0.1);">
+                            <div class="legend-item">
+                                <div class="legend-color" style="background-color: var(--color-alice);"></div>
+                                <span>Preview Name</span>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Add Concierge</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+<script>
+    function showPage(page) {
+        document.querySelectorAll('.page-content').forEach(p => p.style.display = 'none');
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+
+        document.getElementById(page + 'Page').style.display = 'block';
+        event.target.classList.add('active');
+    }
+
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+</script>
+</body>
+</html>
