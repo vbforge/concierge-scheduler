@@ -6,10 +6,11 @@ import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class ConciergeSchedulerApplicationTests {
+public class ConciergeSchedulerApplicationTest {
 
     @Test
-    void contextLoads() {
+    public void loadContext(){
+
     }
 
 }
