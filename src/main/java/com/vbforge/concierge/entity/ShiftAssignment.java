@@ -39,7 +39,7 @@ public class ShiftAssignment extends BaseEntity{
 
     @NotNull(message = "Shift type is required")
     @Enumerated(EnumType.STRING)
-    @Column(name = "shift_type", nullable = false, length = 20)
+    @Column(name = "shift_type", nullable = false, columnDefinition = "varchar(20)")
     @Builder.Default
     private ShiftType shiftType = ShiftType.FULL_DAY;
 

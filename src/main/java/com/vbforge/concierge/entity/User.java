@@ -37,7 +37,7 @@ public class User extends BaseEntity{
 
     @NotNull(message = "Role is required")
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false, length = 20)
+    @Column(name = "role", nullable = false, columnDefinition = "varchar(20)")
     @Builder.Default
     private UserRole role = UserRole.CONCIERGE;
 

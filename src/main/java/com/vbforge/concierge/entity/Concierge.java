@@ -32,7 +32,7 @@ public class Concierge extends BaseEntity{
 
     @NotNull(message = "Color is required")
     @Enumerated(EnumType.STRING)
-    @Column(name = "color", nullable = false, length = 20)
+    @Column(name = "color", nullable = false, columnDefinition = "varchar(20)")
     private ColorType color;
 
     @Column(name = "active", nullable = false)
