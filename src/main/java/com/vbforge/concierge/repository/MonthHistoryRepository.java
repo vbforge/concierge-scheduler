@@ -22,6 +22,8 @@ public interface MonthHistoryRepository extends JpaRepository<MonthHistory, Long
      */
     Optional<MonthHistory> findByYearAndMonthAndDeletedFalse(Integer year, Integer month);
 
+    Optional<MonthHistory> findByYearAndMonth(Integer year, Integer month);
+
     /**
      * Find all history records for a specific year
      */
@@ -64,4 +66,5 @@ public interface MonthHistoryRepository extends JpaRepository<MonthHistory, Long
            "ORDER BY h.year DESC, h.month DESC")
     List<MonthHistory> findByYearRange(@Param("startYear") int startYear, 
                                        @Param("endYear") int endYear);
+
 }

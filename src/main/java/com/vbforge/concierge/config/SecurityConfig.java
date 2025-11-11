@@ -16,6 +16,7 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 /**
  * Spring Security Configuration
  * Configures authentication, authorization, and security filters
+ * RULE: admin-only matchers come before the general ones — because Spring uses first match wins logic
  */
 @Configuration
 @EnableWebSecurity
@@ -42,13 +43,13 @@ public class SecurityConfig {
                                 "/h2-console/**" // For development only
                         ).permitAll()
 
-                        // Admin-only endpoints
+                        // Admin-only endpoints come before general ones (RULE)
                         .requestMatchers(
                                 "/concierges/new",
                                 "/concierges/*/edit",
                                 "/concierges/*/delete",
                                 "/schedule/assign",
-                                "/schedule/remove/**",
+                                "/schedule/remove/*",
                                 "/history/create",
                                 "/history/*/restore"
                         ).hasRole("ADMIN")
@@ -56,11 +57,10 @@ public class SecurityConfig {
                         // Endpoints accessible by both ADMIN and CONCIERGE
                         .requestMatchers(
                                 "/schedule",
-                                "/schedule/**",
+                                "/schedule/view/**",
                                 "/concierges",
-                                "/concierges/**",
+                                "/concierges/list",
                                 "/history",
-                                "/history/**",
                                 "/statistics",
                                 "/statistics/**"
                         ).hasAnyRole("ADMIN", "CONCIERGE")

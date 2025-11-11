@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head(title='History')}"></head>
+
+<body>
+<!-- Navbar -->
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container-fluid content-wrapper">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="mb-0">
+                                <i class="fas fa-history"></i> Schedule History
+                            </h2>
+                            <p class="text-muted mb-0">View and restore past month snapshots</p>
+                        </div>
+                        <button sec:authorize="hasRole('ADMIN')"
+                                class="btn btn-primary"
+                                data-bs-toggle="modal"
+                                data-bs-target="#createSnapshotModal">
+                            <i class="fas fa-camera"></i> Create Snapshot
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    <div th:replace="~{fragments/layout :: messages}"></div>
+
+    <!-- History Grid -->
+    <div class="row">
+        <div th:if="${historyPage.isEmpty()}" class="col-md-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No history snapshots found</h4>
+                    <p class="text-muted">Create your first snapshot to preserve schedule history</p>
+                    <button sec:authorize="hasRole('ADMIN')"
+                            class="btn btn-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#createSnapshotModal">
+                        <i class="fas fa-camera"></i> Create First Snapshot
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Cards -->
+        <div th:each="history : ${historyPage.content}" class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span th:text="${history.monthYearDisplay}">2025-11</span>
+                    </h5>
+                    <span class="badge bg-secondary">
+                            <i class="fas fa-archive"></i> Archived
+                        </span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>Total Shifts:</strong>
+                        <span class="badge bg-info" th:text="${history.totalShifts}">25</span>
+                    </div>
+
+                    <div class="mb-3" th:if="${history.description}">
+                        <strong>Description:</strong>
+                        <p class="text-muted mb-0" th:text="${history.description}">Snapshot description</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            <i class="fas fa-clock"></i>
+                            Created: <span th:text="${#temporals.format(history.snapshotDate, 'MMM dd, yyyy HH:mm')}">Nov 01, 2025 10:30</span>
+                        </small>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="btn-group w-100">
+                        <!-- View Button -->
+                        <a th:href="@{/history/{id}(id=${history.id})}"
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+
+                        <!-- Admin Actions -->
+                        <div sec:authorize="hasRole('ADMIN')" class="btn-group" role="group">
+                            <!-- Restore Button -->
+                            <button type="button"
+                                    class="btn btn-outline-success"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#restoreModal"
+                                    th:attr="data-id=${history.id},data-month=${history.monthYearDisplay}">
+                                <i class="fas fa-undo"></i> Restore
+                            </button>
+
+                            <!-- Duplicate Button -->
+                            <button type="button"
+                                    class="btn btn-outline-info"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#duplicateModal"
+                                    th:attr="data-id=${history.id},data-year=${history.year},data-month=${history.month}">
+                                <i class="fas fa-copy"></i> Duplicate
+                            </button>
+
+                            <!-- Delete Button -->
+                            <form th:action="@{/history/{id}/delete(id=${history.id})}"
+                                  method="post"
+                                  style="display: inline;"
+                                  onsubmit="return confirm('Delete this snapshot? This action cannot be undone.');">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                <button type="submit" class="btn btn-outline-danger">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div th:if="${!historyPage.isEmpty()}" class="row">
+        <div class="col-md-12">
+            <nav>
+                <ul class="pagination justify-content-center">
+                    <li class="page-item" th:classappend="${historyPage.first} ? 'disabled'">
+                        <a class="page-link"
+                           th:href="@{/history(page=${historyPage.number - 1})}">
+                            Previous
+                        </a>
+                    </li>
+
+                    <li th:each="i : ${#numbers.sequence(0, historyPage.totalPages - 1)}"
+                        class="page-item"
+                        th:classappend="${i == historyPage.number} ? 'active'">
+                        <a class="page-link"
+                           th:href="@{/history(page=${i})}"
+                           th:text="${i + 1}">1</a>
+                    </li>
+
+                    <li class="page-item" th:classappend="${historyPage.last} ? 'disabled'">
+                        <a class="page-link"
+                           th:href="@{/history(page=${historyPage.number + 1})}">
+                            Next
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Create Snapshot Modal (Admin Only) -->
+<div sec:authorize="hasRole('ADMIN')" class="modal fade" id="createSnapshotModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Snapshot</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/history/create}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Year</label>
+                        <input type="number" class="form-control" name="year"
+                               th:value="${#dates.year(#dates.createNow())}"
+                               min="2020" max="2100" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Month</label>
+                        <select class="form-select" name="month" required>
+                            <option th:each="m : ${#numbers.sequence(1, 12)}"
+                                    th:value="${m}"
+                                    th:text="${#dates.monthName(#dates.create(2025, m, 1))}"
+                                    th:selected="${m == #dates.month(#dates.createNow())}">
+                                Month
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" name="description" rows="2"
+                                  placeholder="Add a description for this snapshot..."></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-camera"></i> Create Snapshot
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Restore Modal (Admin Only) -->
+<div sec:authorize="hasRole('ADMIN')" class="modal fade" id="restoreModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> Confirm Restore
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="restoreForm" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+                <div class="modal-body">
+                    <p class="mb-0">
+                        <strong>Warning:</strong> This will replace the current schedule for
+                        <span id="restoreMonth"></span> with the snapshot data.
+                    </p>
+                    <p class="text-danger mb-0">This action cannot be undone!</p>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-undo"></i> Restore Schedule
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Duplicate Modal (Admin Only) -->
+<div sec:authorize="hasRole('ADMIN')" class="modal fade" id="duplicateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Duplicate Schedule</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="duplicateForm" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <input type="hidden" id="sourceId" name="id"/>
+
+                <div class="modal-body">
+                    <p class="mb-3">Copy schedule to another month:</p>
+
+                    <div class="mb-3">
+                        <label class="form-label">Target Year</label>
+                        <input type="number" class="form-control" name="targetYear"
+                               th:value="${#dates.year(#dates.createNow())}"
+                               min="2020" max="2100" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Target Month</label>
+                        <select class="form-select" name="targetMonth" required>
+                            <option th:each="m : ${#numbers.sequence(1, 12)}"
+                                    th:value="${m}"
+                                    th:text="${#dates.monthName(#dates.create(2025, m, 1))}">
+                                Month
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-copy"></i> Duplicate
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<!-- Scripts -->
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+
+<!-- History-specific Scripts -->
+<script>
+    // Handle restore modal
+    document.getElementById('restoreModal').addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const id = button.getAttribute('data-id');
+        const month = button.getAttribute('data-month');
+
+        document.getElementById('restoreForm').action = '/history/' + id + '/restore';
+        document.getElementById('restoreMonth').textContent = month;
+    });
+
+    // Handle duplicate modal
+    document.getElementById('duplicateModal').addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const id = button.getAttribute('data-id');
+
+        document.getElementById('duplicateForm').action = '/history/' + id + '/duplicate';
+        document.getElementById('sourceId').value = id;
+    });
+</script>
+</body>
+</html>

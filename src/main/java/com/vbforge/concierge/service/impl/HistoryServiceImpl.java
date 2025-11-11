@@ -7,6 +7,8 @@ import com.vbforge.concierge.dto.MonthHistoryDto;
 import com.vbforge.concierge.dto.ShiftAssignmentDto;
 import com.vbforge.concierge.entity.MonthHistory;
 import com.vbforge.concierge.exception.MonthHistoryNotFoundException;
+import com.vbforge.concierge.exception.SnapshotAlreadyExistsException;
+import com.vbforge.concierge.exception.SnapshotCreationException;
 import com.vbforge.concierge.exception.SnapshotException;
 import com.vbforge.concierge.mapper.MonthHistoryMapper;
 import com.vbforge.concierge.repository.MonthHistoryRepository;
@@ -26,6 +28,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Implementation of HistoryService
@@ -44,24 +47,30 @@ public class HistoryServiceImpl implements HistoryService {
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule());
 
-
     @Override
     @Transactional
     public MonthHistoryDto createSnapshot(int year, int monthValue) {
         return createSnapshot(year, monthValue, null);
     }
 
-    @Override
+    /*@Override
     @Transactional
     public MonthHistoryDto createSnapshot(int year, int monthValue, String description) {
         log.info("Creating snapshot for {}-{}", year, monthValue);
 
         validationService.validateYearMonth(year, monthValue);
 
-        // Get all shifts for the month
+        // ✅ Step 1: Check if snapshot already exists
+        Optional<MonthHistory> existing = historyRepository.findByYearAndMonthAndDeletedFalse(year, monthValue);
+        if (existing.isPresent()) {
+            log.warn("Snapshot for {}-{} already exists (ID={})", year, monthValue, existing.get().getId());
+            throw new SnapshotException("Snapshot for " + year + "-" + monthValue + " already exists");
+        }
+
+        // ✅ Step 2: Get all shifts for the month
         List<ShiftAssignmentDto> shifts = monthScheduleService.getShiftsForMonth(year, monthValue);
 
-        // Serialize to JSON
+        // ✅ Step 3: Serialize to JSON
         String snapshotJson;
         try {
             snapshotJson = objectMapper.writeValueAsString(shifts);
@@ -69,7 +78,7 @@ public class HistoryServiceImpl implements HistoryService {
             throw new SnapshotException("Failed to serialize shifts to JSON", e);
         }
 
-        // Create history record
+        // ✅ Step 4: Create and save new history record
         MonthHistory history = MonthHistory.builder()
                 .year(year)
                 .month(monthValue)
@@ -83,6 +92,62 @@ public class HistoryServiceImpl implements HistoryService {
 
         log.info("Snapshot created with ID: {}", saved.getId());
         return historyMapper.toDto(saved);
+    }*/
+
+    @Override
+    @Transactional
+    public MonthHistoryDto createSnapshot(int year, int month, String description) {
+        log.info("Creating new snapshot for {}/{}", month, year);
+
+        try {
+            // 1️⃣ Check if a snapshot already exists for this year/month
+            Optional<MonthHistory> existing = historyRepository.findByYearAndMonth(year, month);
+
+            if (existing.isPresent()) {
+                MonthHistory found = existing.get();
+
+                if (!found.isDeleted()) {
+                    // Snapshot already exists and is active
+                    log.warn("Snapshot already exists for {}/{} (ID={}) and is active.", month, year, found.getId());
+                    throw new SnapshotAlreadyExistsException(
+                            String.format("Snapshot for %d/%d already exists (ID=%d)", month, year, found.getId())
+                    );
+                }
+
+                // 2️⃣ Reuse deleted snapshot
+                log.info("Reusing previously deleted snapshot for {}/{} (ID={})", month, year, found.getId());
+                found.setDeleted(false);
+                found.setUpdatedAt(LocalDateTime.now());
+                found.setDescription(description);
+//                found.setSnapshotJson(snapshotJson);
+
+                MonthHistory reused = historyRepository.save(found);
+                log.debug("Snapshot successfully reactivated for {}/{} with ID={}", month, year, reused.getId());
+                return historyMapper.toDto(reused);
+            }
+
+            // 3️⃣ No snapshot found → create new one
+            MonthHistory newSnapshot = new MonthHistory();
+            newSnapshot.setYear(year);
+            newSnapshot.setMonth(month);
+            newSnapshot.setDescription(description);
+//            newSnapshot.setSnapshotJson(snapshotJson);
+            newSnapshot.setCreatedAt(LocalDateTime.now());
+            newSnapshot.setUpdatedAt(LocalDateTime.now());
+            newSnapshot.setDeleted(false);
+
+            MonthHistory saved = historyRepository.save(newSnapshot);
+            log.info("New snapshot created for {}/{} with ID={}", month, year, saved.getId());
+            return historyMapper.toDto(saved);
+
+        } catch (SnapshotAlreadyExistsException e) {
+            throw e; // rethrow custom business exception as is
+        } catch (Exception e) {
+            log.error("Failed to create snapshot for {}/{}: {}", month, year, e.getMessage(), e);
+            throw new SnapshotCreationException(
+                    String.format("Unable to create snapshot for %d/%d", month, year), e
+            );
+        }
     }
 
     @Override
